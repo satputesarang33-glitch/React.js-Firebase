@@ -5,10 +5,10 @@ import morgan from "morgan";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-import { connectFirebase } from "./Firebase-01/Configfirebase-1.js";
-
-import todoRoutes from "./Routes/todoRoutes.js";
-import authRoutes from "./Routes/authRoutes.js";
+import { connectDB } from "./Config/config-db.js";
+import userRoutes from "./Routes/UserRoutes.js";
+import { errorHandler, notFound } from "./Middleware/errorMiddleware.js";
+import { verifySmtpConnection } from "./Utils/sendEmail.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, ".env"), override: true });
@@ -23,29 +23,20 @@ if (process.env.NODE_ENV === "development") {
   app.use(morgan("dev"));
 }
 
-connectFirebase();
+app.use("/api/users", userRoutes);
 
-app.get("/api/health-check", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Welcome to the API of Firebase-1 Project working on Todo List",
-  });
-});
+app.use(notFound);
+app.use(errorHandler);
 
-app.use("/api/auth", authRoutes);
-app.use("/api/todos", todoRoutes);
-
-app.use((err, req, res, next) => {
-  const status = err.status || 500;
-  res.status(status).json({
-    success: false,
-    message: err.message || "Internal server error",
-  });
-});
-
+await connectDB();
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+app.listen(PORT, async () => {
+  console.log(`Server is running on port ${PORT}`);
+  try {
+    const smtp = await verifySmtpConnection();
+    console.log(`[Email] ${smtp.message}`);
+  } catch (err) {
+    console.log(`[Email] SMTP check failed: ${err.message}`);
+  }
 });
-
 export default app;

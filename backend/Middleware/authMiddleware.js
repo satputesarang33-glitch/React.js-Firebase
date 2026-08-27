@@ -1,27 +1,26 @@
-import { auth } from "../Firebase-01/Configfirebase-1.js";
+import jwt from "jsonwebtoken";
+import asyncHandler from "express-async-handler";
+import { User } from "../Models/UserModels.js";
 
-export async function requireAuth(req, res, next) {
+export const protect = asyncHandler(async (req, res, next) => {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) {
+    res.status(401);
+    throw new Error("Not authorized, token missing");
+  }
+
+  const token = header.split(" ")[1];
   try {
-    const header = req.headers.authorization || "";
-    const [scheme, token] = header.split(" ");
-
-    if (scheme !== "Bearer" || !token) {
-      return res.status(401).json({
-        success: false,
-        message: "Authentication required",
-      });
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+    if (!user || !user.isActive) {
+      res.status(401);
+      throw new Error("Not authorized");
     }
-
-    const decoded = await auth().verifyIdToken(token);
-    req.user = {
-      uid: decoded.uid,
-      email: decoded.email || null,
-    };
+    req.user = user;
     next();
   } catch {
-    return res.status(401).json({
-      success: false,
-      message: "Invalid or expired token",
-    });
+    res.status(401);
+    throw new Error("Not authorized, token invalid");
   }
-}
+});
