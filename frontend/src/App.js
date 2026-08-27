@@ -291,7 +291,7 @@ function App() {
                               className="danger"
                               onClick={() => handleDeleteTodo(todo.id)}
                             >
-                              Delete
+                              Delete sarang
                             </button>
                           </div>
                         </>
